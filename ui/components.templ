@@ -1,0 +1,123 @@
+package ui
+
+// BrightnessSolid renders the brightness slider for solid color mode
+templ BrightnessSolid(currentColor string, currentBrightness string) {
+	<form class="mb-4 block" id="brightness-solid">
+		<label class="block text-sm font-medium text-gray-700">Brightness</label>
+		<input type="hidden" name="color" value={ currentColor } />
+		<input
+			type="range"
+			name="brightness"
+			min="0"
+			max="255"
+			value={ currentBrightness }
+			hx-post="/set-color"
+			hx-target="body"
+			hx-swap="outerHTML"
+			class="w-full"
+		/>
+	</form>
+	<div id="brightness-solid" class="block" hx-swap-oob="true"></div>
+	<div id="brightness-anim" class="hidden" hx-swap-oob="true"></div>
+}
+
+// BrightnessAnim renders the brightness slider for animation modes
+templ BrightnessAnim(currentBrightness string) {
+	<form class="mb-4 block" id="brightness-anim">
+		<label class="block text-sm font-medium text-gray-700">Brightness</label>
+		<input
+			type="range"
+			name="brightness"
+			min="0"
+			max="255"
+			value={ currentBrightness }
+			hx-post="/set-brightness"
+			hx-target="body"
+			hx-swap="outerHTML"
+			class="w-full"
+		/>
+	</form>
+	<div id="brightness-solid" class="hidden" hx-swap-oob="true"></div>
+	<div id="brightness-anim" class="block" hx-swap-oob="true"></div>
+}
+
+// AnimationSelectorSolid renders the select with "solid" selected
+templ AnimationSelectorSolid() {
+	<form>
+		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
+		<select
+			name="animation"
+			hx-post="/set-animation"
+			hx-target="body"
+			hx-swap="outerHTML"
+			class="w-full p-2 border rounded-md"
+		>
+			<option value="solid" selected>Solid Color</option>
+			<option value="rainbow">Rainbow</option>
+			<option value="fade">Fade</option>
+		</select>
+	</form>
+}
+
+// AnimationSelectorRainbow renders the select with "rainbow" selected
+templ AnimationSelectorRainbow() {
+	<form>
+		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
+		<select
+			name="animation"
+			hx-post="/set-animation"
+			hx-target="body"
+			hx-swap="outerHTML"
+			class="w-full p-2 border rounded-md"
+		>
+			<option value="solid">Solid Color</option>
+			<option value="rainbow" selected>Rainbow</option>
+			<option value="fade">Fade</option>
+		</select>
+	</form>
+}
+
+// AnimationSelectorFade renders the select with "fade" selected
+templ AnimationSelectorFade() {
+	<form>
+		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
+		<select
+			name="animation"
+			hx-post="/set-animation"
+			hx-target="body"
+			hx-swap="outerHTML"
+			class="w-full p-2 border rounded-md"
+		>
+			<option value="solid">Solid Color</option>
+			<option value="rainbow">Rainbow</option>
+			<option value="fade" selected>Fade</option>
+		</select>
+	</form>
+}
+
+templ ControlPanel(currentColor string, currentBrightness string, currentAnimation string, brightnessComponent templ.Component, animationSelector templ.Component) {
+	<div class="max-w-md mx-auto p-4 bg-gray-100 rounded-lg shadow-md">
+		<h1 class="text-2xl font-bold text-center mb-4">LED Strip Control</h1>
+
+		<!-- Color Picker Form -->
+		<form class="mb-4">
+			<label class="block text-sm font-medium text-gray-700">Pick a Color</label>
+			<input type="hidden" name="brightness" value={ currentBrightness } />
+			<input
+				type="color"
+				name="color"
+				value={ currentColor }
+				hx-post="/set-color"
+				hx-target="body"
+				hx-swap="outerHTML"
+				class="w-full h-10 rounded-md"
+			/>
+		</form>
+
+		<!-- Brightness Component (passed from Go) -->
+		@brightnessComponent
+
+		<!-- Animation Selector (passed from Go) -->
+		@animationSelector
+	</div>
+}

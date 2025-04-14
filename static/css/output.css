@@ -1,0 +1,25 @@
+/*! tailwindcss v4.0.9 | MIT License | https://tailwindcss.com */
+.static {
+  position: static;
+}
+.mx-auto {
+  margin-inline: auto;
+}
+.block {
+  display: block;
+}
+.w-full {
+  width: 100%;
+}
+.border {
+  border-style: var(--tw-border-style);
+  border-width: 1px;
+}
+.text-center {
+  text-align: center;
+}
+@property --tw-border-style {
+  syntax: "*";
+  inherits: false;
+  initial-value: solid;
+}
