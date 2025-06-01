@@ -3,9 +3,9 @@
 This project is a web-based application for controlling an ESP32-connected RGB LED strip. It allows users to adjust color, brightness, power state, and animations through a responsive UI. The app leverages Go for the backend, HTMX for dynamic updates, TailwindCSS for styling, Templ for server-side rendering, and WebSocket for real-time communication with the ESP32.
 
 ## Features
-- **Power Toggle**: Turn the LED strip on/off (sends `brightness:0` for off).
-- **Color Selection**: Choose from a grid of predefined colors (reds, greens, blues, yellows, purples, pinks, cyans).
-- **Brightness Control**: Adjust brightness (0-255) via a slider; minimum sets strip to off.
+- **Power Toggle**: Turn the LED strip on/off.
+- **Color Selection**: Choose from a grid of predefined colors so it can be used on a touch display.
+- **Brightness Control**: Adjust brightness (0-255) via a slider; minimum sets strip off.
 - **Animation Modes**: Select Solid Color, Rainbow, Fade, Chase, or Twinkle.
 - **Real-Time Updates**: Changes are sent instantly to the ESP32 via WebSocket.
 - **Dynamic UI**: HTMX enables seamless updates without full page reloads.
@@ -30,6 +30,36 @@ This project is a web-based application for controlling an ESP32-connected RGB L
     - Suitable power supply for the LED strip.
 
 ## Installation
+
+### ESP32 Firmware
+1. **Install Arduino Libraries**:
+    - `WiFi.h`
+    - `WebSocketsServer` (by Markus Sattler)
+    - `FastLED`
+    - `ArduinoOTA`
+
+2. **Configure `sketch_apr10a.ino`**:
+    - Update WiFi credentials:
+      ```cpp
+      const char* ssid = "YOUR_SSID";
+      const char* password = "YOUR_PASSWORD";
+      ```
+    - Adjust LED strip settings if needed:
+      ```cpp
+      #define DATA_PIN 18
+      #define NUM_LEDS 99
+      #define LED_TYPE WS2815
+      #define COLOR_ORDER GRB
+      ```
+
+3. **Upload to ESP32**:
+    - Connect the ESP32 to your computer.
+    - Open `sketch_apr10a.ino` in the Arduino IDE.
+    - Select your ESP32 board and port, then upload the sketch.
+
+4. **Verify Connection**:
+    - Use the Serial Monitor (115200 baud) to check WiFi connection and IP address.
+    - The ESP32 hosts a WebSocket server at `ws://<ESP32_IP>:81/ws`.
 
 ### Backend (Go Server)
 1. **Clone the Repository**:
@@ -65,36 +95,6 @@ This project is a web-based application for controlling an ESP32-connected RGB L
    go run .
    ```
    The server runs on `http://localhost:8080`.
-
-### ESP32 Firmware
-1. **Install Arduino Libraries**:
-    - `WiFi.h`
-    - `WebSocketsServer` (by Markus Sattler)
-    - `FastLED`
-    - `ArduinoOTA`
-
-2. **Configure `sketch_apr10a.ino`**:
-    - Update WiFi credentials:
-      ```cpp
-      const char* ssid = "YOUR_SSID";
-      const char* password = "YOUR_PASSWORD";
-      ```
-    - Adjust LED strip settings if needed:
-      ```cpp
-      #define DATA_PIN 18
-      #define NUM_LEDS 99
-      #define LED_TYPE WS2815
-      #define COLOR_ORDER GRB
-      ```
-
-3. **Upload to ESP32**:
-    - Connect the ESP32 to your computer.
-    - Open `sketch_apr10a.ino` in the Arduino IDE.
-    - Select your ESP32 board and port, then upload the sketch.
-
-4. **Verify Connection**:
-    - Use the Serial Monitor (115200 baud) to check WiFi connection and IP address.
-    - The ESP32 hosts a WebSocket server at `ws://<ESP32_IP>:81/ws`.
 
 ### Configuration
 - **WebSocket Address**:
