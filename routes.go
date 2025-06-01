@@ -16,4 +16,5 @@ func RegisterRoutes(e *echo.Echo) {
 	e.POST("/set-color", SetColorHandler)
 	e.POST("/set-brightness", SetBrightnessHandler)
 	e.POST("/set-animation", SetAnimationHandler)
+	e.POST("/set-power", SetPowerHandler)
 }

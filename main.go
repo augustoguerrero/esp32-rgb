@@ -8,36 +8,45 @@ import (
 )
 
 var wsConn *websocket.Conn
-var wsAddr = "ws://192.168.1.74:81/ws"
+var wsAddr = "ws://192.168.1.74:81/ws" // Replace with ESP32 IP from Serial Monitor
 
-// initWebSocket initializes the WebSocket connection to the ESP32
-func initWebSocket() {
+func initWebSocket() error {
 	var err error
 	wsConn, _, err = websocket.DefaultDialer.Dial(wsAddr, nil)
 	if err != nil {
 		log.Printf("WebSocket connection failed: %v", err)
+		return err
 	}
+	log.Println("WebSocket connected to", wsAddr)
+	return nil
 }
 
-// SendWSMessage sends a WebSocket message to the ESP32
 func SendWSMessage(message string) error {
 	if wsConn == nil {
-		initWebSocket()
+		if err := initWebSocket(); err != nil {
+			return err
+		}
 	}
-	return wsConn.WriteMessage(websocket.TextMessage, []byte(message))
+	log.Println("Sending WebSocket message:", message)
+	err := wsConn.WriteMessage(websocket.TextMessage, []byte(message))
+	if err != nil {
+		log.Printf("WebSocket write failed: %v", err)
+		wsConn = nil // Reset connection
+		return err
+	}
+	return nil
 }
 
 func main() {
 	e := echo.New()
-
-	// Serve static files (TailwindCSS)
 	e.Static("/static", "static")
-
-	// Register routes
 	RegisterRoutes(e)
 
-	// Start server
-	log.Println("Server starting on :8080")
+	// Initialize WebSocket
+	if err := initWebSocket(); err != nil {
+		log.Println("Initial WebSocket connection failed, will retry on demand")
+	}
+
 	if err := e.Start(":8080"); err != nil {
 		log.Fatal(err)
 	}

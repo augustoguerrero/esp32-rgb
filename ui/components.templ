@@ -1,5 +1,320 @@
 package ui
 
+// PowerToggle renders the on/off checkbox
+templ PowerToggle(isOn bool) {
+	<form class="mb-4" hx-post="/set-power" hx-target="body" hx-swap="outerHTML">
+		<label class="block text-sm font-medium text-gray-700">Power</label>
+		<input
+			type="checkbox"
+			name="power"
+			value="on"
+			checked={ isOn }
+			class="w-6 h-6"
+		/>
+		if isOn {
+			<input type="hidden" name="power" value="on" />
+		} else {
+			<input type="hidden" name="power" value="off" />
+		}
+	</form>
+}
+
+// ColorGrid renders a grid of color buttons
+templ ColorGrid(currentBrightness string) {
+	<div class="mb-4">
+		<label class="block text-sm font-medium text-gray-700">Pick a Color</label>
+		<div class="grid grid-cols-4 gap-2">
+			<!-- Reds -->
+			<form>
+				<input type="hidden" name="color" value="#EF4444" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-red-500 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#F87171" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-red-400 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#FCA5A5" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-red-300 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#FECACA" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-red-200 rounded"
+				></button>
+			</form>
+			<!-- Greens -->
+			<form>
+				<input type="hidden" name="color" value="#10B981" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-green-500 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#34D399" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-green-400 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#6EE7B7" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-green-300 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#A7F3D0" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-green-200 rounded"
+				></button>
+			</form>
+			<!-- Blues -->
+			<form>
+				<input type="hidden" name="color" value="#3B82F6" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-blue-500 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#60A5FA" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-blue-400 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#93C5FD" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-blue-300 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#BFDBFE" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-blue-200 rounded"
+				></button>
+			</form>
+			<!-- Yellows -->
+			<form>
+				<input type="hidden" name="color" value="#FBBF24" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-yellow-500 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#FCD34D" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-yellow-400 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#FDE68A" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-yellow-300 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#FEF9C3" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-yellow-200 rounded"
+				></button>
+			</form>
+			<!-- Purples -->
+			<form>
+				<input type="hidden" name="color" value="#8B5CF6" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-purple-500 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#A78BFA" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-purple-400 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#C4B5FD" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-purple-300 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#DDD6FE" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-purple-200 rounded"
+				></button>
+			</form>
+			<!-- Pinks -->
+			<form>
+				<input type="hidden" name="color" value="#EC4899" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-pink-500 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#F472B6" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-pink-400 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#F9A8D4" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-pink-300 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#FBCFE8" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-pink-200 rounded"
+				></button>
+			</form>
+			<!-- Cyans -->
+			<form>
+				<input type="hidden" name="color" value="#06B6D4" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-cyan-500 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#22D3EE" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-cyan-400 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#67E8F9" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-cyan-300 rounded"
+				></button>
+			</form>
+			<form>
+				<input type="hidden" name="color" value="#A5F3FC" />
+				<input type="hidden" name="brightness" value={ currentBrightness } />
+				<button
+					hx-post="/set-color"
+					hx-target="body"
+					hx-swap="outerHTML"
+					class="w-12 h-12 bg-cyan-200 rounded"
+				></button>
+			</form>
+		</div>
+	</div>
+}
+
 // BrightnessSolid renders the brightness slider for solid color mode
 templ BrightnessSolid(currentColor string, currentBrightness string) {
 	<form class="mb-4 block" id="brightness-solid">
@@ -55,6 +370,8 @@ templ AnimationSelectorSolid() {
 			<option value="solid" selected>Solid Color</option>
 			<option value="rainbow">Rainbow</option>
 			<option value="fade">Fade</option>
+			<option value="chase">Chase</option>
+			<option value="twinkle">Twinkle</option>
 		</select>
 	</form>
 }
@@ -73,6 +390,8 @@ templ AnimationSelectorRainbow() {
 			<option value="solid">Solid Color</option>
 			<option value="rainbow" selected>Rainbow</option>
 			<option value="fade">Fade</option>
+			<option value="chase">Chase</option>
+			<option value="twinkle">Twinkle</option>
 		</select>
 	</form>
 }
@@ -91,28 +410,61 @@ templ AnimationSelectorFade() {
 			<option value="solid">Solid Color</option>
 			<option value="rainbow">Rainbow</option>
 			<option value="fade" selected>Fade</option>
+			<option value="chase">Chase</option>
+			<option value="twinkle">Twinkle</option>
 		</select>
 	</form>
 }
 
-templ ControlPanel(currentColor string, currentBrightness string, currentAnimation string, brightnessComponent templ.Component, animationSelector templ.Component) {
-	<div class="max-w-md mx-auto p-4 bg-gray-100 rounded-lg shadow-md">
+// AnimationSelectorChase renders the select with "chase" selected
+templ AnimationSelectorChase() {
+	<form>
+		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
+		<select
+			name="animation"
+			hx-post="/set-animation"
+			hx-target="body"
+			hx-swap="outerHTML"
+			class="w-full p-2 border rounded-md"
+		>
+			<option value="solid">Solid Color</option>
+			<option value="rainbow">Rainbow</option>
+			<option value="fade">Fade</option>
+			<option value="chase" selected>Chase</option>
+			<option value="twinkle">Twinkle</option>
+		</select>
+	</form>
+}
+
+// AnimationSelectorTwinkle renders the select with "twinkle" selected
+templ AnimationSelectorTwinkle() {
+	<form>
+		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
+		<select
+			name="animation"
+			hx-post="/set-animation"
+			hx-target="body"
+			hx-swap="outerHTML"
+			class="w-full p-2 border rounded-md"
+		>
+			<option value="solid">Solid Color</option>
+			<option value="rainbow">Rainbow</option>
+			<option value="fade">Fade</option>
+			<option value="chase">Chase</option>
+			<option value="twinkle" selected>Twinkle</option>
+		</select>
+	</form>
+}
+
+templ ControlPanel(currentColor string, currentBrightness string, currentAnimation string, brightnessComponent templ.Component, animationSelector templ.Component, isOn bool) {
+	<div class="flex-center max-w-md mx-auto p-6 bg-gray-100 rounded-lg shadow-md">
 		<h1 class="text-2xl font-bold text-center mb-4">LED Strip Control</h1>
 
-		<!-- Color Picker Form -->
-		<form class="mb-4">
-			<label class="block text-sm font-medium text-gray-700">Pick a Color</label>
-			<input type="hidden" name="brightness" value={ currentBrightness } />
-			<input
-				type="color"
-				name="color"
-				value={ currentColor }
-				hx-post="/set-color"
-				hx-target="body"
-				hx-swap="outerHTML"
-				class="w-full h-10 rounded-md"
-			/>
-		</form>
+		<!-- Power Toggle -->
+		@PowerToggle(isOn)
+
+		<!-- Color Grid -->
+		@ColorGrid(currentBrightness)
 
 		<!-- Brightness Component (passed from Go) -->
 		@brightnessComponent
