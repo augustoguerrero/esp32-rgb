@@ -1,0 +1,6 @@
+/tmp
+/.env
+/bin
+.idea
+/ui/*templ.txt
+/ui/*templ.go
