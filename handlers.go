@@ -86,7 +86,12 @@ func SetColorHandler(c echo.Context) error {
 	sess.Values["color"] = color
 	sess.Values["brightness"] = brightness
 	sess.Values["animation"] = "solid"
-	isOn := sess.Values["isOn"].(bool)
+	// Safely handle isOn
+	isOn, ok := sess.Values["isOn"].(bool)
+	if !ok {
+		isOn = true // Default to true if unset
+		sess.Values["isOn"] = isOn
+	}
 	if isOn {
 		r, g, b := hexToRGB(color)
 		message := fmt.Sprintf("color:%d,%d,%d,%s", r, g, b, brightness)
@@ -115,7 +120,11 @@ func SetBrightnessHandler(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Invalid brightness")
 	}
 	sess.Values["brightness"] = brightness
-	isOn := sess.Values["isOn"].(bool)
+	isOn, ok := sess.Values["isOn"].(bool)
+	if !ok {
+		isOn = true
+		sess.Values["isOn"] = isOn
+	}
 	if isOn {
 		message := fmt.Sprintf("brightness:%s", brightness)
 		if err := SendWSMessage(message); err != nil {
@@ -143,7 +152,11 @@ func SetAnimationHandler(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Invalid animation")
 	}
 	sess.Values["animation"] = animation
-	isOn := sess.Values["isOn"].(bool)
+	isOn, ok := sess.Values["isOn"].(bool)
+	if !ok {
+		isOn = true
+		sess.Values["isOn"] = isOn
+	}
 	if isOn {
 		message := fmt.Sprintf("animation:%s", animation)
 		if err := SendWSMessage(message); err != nil {
@@ -162,41 +175,49 @@ func SetAnimationHandler(c echo.Context) error {
 func SetPowerHandler(c echo.Context) error {
 	sess, err := session.Get("session", c)
 	if err != nil {
+		log.Println("Session error:", err)
 		return c.String(http.StatusInternalServerError, "Failed to get session")
 	}
 	power := c.FormValue("power")
+	if power != "on" && power != "off" {
+		log.Println("Invalid power value:", power)
+		return c.String(http.StatusBadRequest, "Invalid power value")
+	}
 	isOn := power == "on"
 	sess.Values["isOn"] = isOn
-	if !isOn {
-		// Set brightness to 0
-		message := "brightness:0"
-		if err := SendWSMessage(message); err != nil {
-			return c.String(http.StatusInternalServerError, "Failed to update power state")
-		}
-	} else {
-		// Restore previous state
+	message := fmt.Sprintf("power:%s", power)
+	if err := SendWSMessage(message); err != nil {
+		log.Println("WebSocket error:", err)
+		return c.String(http.StatusInternalServerError, "Failed to update power state")
+	}
+	if isOn {
 		currentAnimation := sess.Values["animation"].(string)
 		currentBrightness := sess.Values["brightness"].(string)
 		if currentAnimation == "solid" {
 			r, g, b := hexToRGB(sess.Values["color"].(string))
 			message := fmt.Sprintf("color:%d,%d,%d,%s", r, g, b, currentBrightness)
 			if err := SendWSMessage(message); err != nil {
-				return c.String(http.StatusInternalServerError, "Failed to update color")
+				log.Println("WebSocket error:", err)
+				return c.String(http.StatusInternalServerError, "Failed to restore color")
 			}
 		} else {
 			message := fmt.Sprintf("animation:%s", currentAnimation)
 			if err := SendWSMessage(message); err != nil {
-				return c.String(http.StatusInternalServerError, "Failed to update animation")
+				log.Println("WebSocket error:", err)
+				return c.String(http.StatusInternalServerError, "Failed to restore animation")
 			}
 			message = fmt.Sprintf("brightness:%s", currentBrightness)
 			if err := SendWSMessage(message); err != nil {
-				return c.String(http.StatusInternalServerError, "Failed to update brightness")
+				log.Println("WebSocket error:", err)
+				return c.String(http.StatusInternalServerError, "Failed to restore brightness")
 			}
 		}
 	}
 	if err := sess.Save(c.Request(), c.Response()); err != nil {
+		log.Println("Session save error:", err)
 		return c.String(http.StatusInternalServerError, "Failed to save session")
 	}
+	log.Printf("SetPower: isOn=%v, message=%s", isOn, message)
 	return renderControlPanel(c, sess.Values["color"].(string), sess.Values["brightness"].(string), sess.Values["animation"].(string), isOn)
 }
 
