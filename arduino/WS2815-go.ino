@@ -19,7 +19,8 @@ enum Animation {
   RAINBOW,
   FADE,
   CHASE,
-  TWINKLE
+  TWINKLE,
+  SPACE
 };
 
 Animation currentAnimation = SOLID_COLOR;
@@ -27,6 +28,7 @@ CRGB solidColor = CRGB(255, 255, 255);
 uint8_t brightness = 120;
 uint8_t hue = 0;
 bool isOn = true;
+bool needUpdate = true; // Optimize updates for solid color
 
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length) {
   if (type == WStype_TEXT) {
@@ -40,6 +42,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
         FastLED.setBrightness(brightness);
         currentAnimation = SOLID_COLOR;
         isOn = true;
+        needUpdate = true;
         Serial.printf("Set SOLID_COLOR: R:%d G:%d B:%d Bright:%d\n", r, g, b, brightness);
       } else {
         Serial.println("Invalid color format");
@@ -50,6 +53,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
         brightness = constrain(bright, 0, 255);
         FastLED.setBrightness(brightness);
         isOn = true;
+        needUpdate = true;
         Serial.println("Brightness: " + String(brightness));
       } else {
         Serial.println("Invalid brightness format");
@@ -59,10 +63,11 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
       if (state == "on") {
         isOn = true;
         FastLED.setBrightness(brightness);
+        needUpdate = true;
         Serial.println("Power ON, brightness: " + String(brightness));
       } else if (state == "off") {
         isOn = false;
-        FastLED.setBrightness(0);
+        fill_solid(leds, NUM_LEDS, CRGB::Black);
         FastLED.show();
         Serial.println("Power OFF");
       } else {
@@ -82,11 +87,18 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t* payload, size_t length)
       } else if (anim == "twinkle") {
         currentAnimation = TWINKLE;
         Serial.println("Set TWINKLE");
+      } else if (anim == "space") {
+        currentAnimation = SPACE;
+        Serial.println("Set SPACE");
+      } else if (anim == "solid") {
+        currentAnimation = SOLID_COLOR;
+        Serial.println("Set SOLID_COLOR");
       } else {
         currentAnimation = SOLID_COLOR;
         Serial.println("Set SOLID_COLOR (default)");
       }
       isOn = true;
+      needUpdate = true;
     } else {
       Serial.println("Unknown message");
     }
@@ -167,18 +179,30 @@ void twinkleAnimation() {
   delay(100);
 }
 
+void spaceAnimation() {
+  FastLED.clear();
+  for (int i = 0; i < NUM_LEDS / 5; i++) {
+    int ledPos = random(NUM_LEDS);
+    uint8_t starHue = random8(160, 255); // Blues to purples
+    leds[ledPos] = CHSV(starHue, 200 + random8(55), 200 + random8(55));
+  }
+  FastLED.show();
+  delay(200);
+}
+
 void loop() {
   ArduinoOTA.handle();
   webSocket.loop();
   if (!isOn) {
-    FastLED.setBrightness(0);
-    FastLED.show();
     return;
   }
   switch (currentAnimation) {
     case SOLID_COLOR:
-      fill_solid(leds, NUM_LEDS, solidColor);
-      FastLED.show();
+      if (needUpdate) {
+        fill_solid(leds, NUM_LEDS, solidColor);
+        FastLED.show();
+        needUpdate = false;
+      }
       delay(20);
       break;
     case RAINBOW:
@@ -192,6 +216,9 @@ void loop() {
       break;
     case TWINKLE:
       twinkleAnimation();
+      break;
+    case SPACE:
+      spaceAnimation();
       break;
   }
 }

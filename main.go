@@ -2,12 +2,15 @@ package main
 
 import (
 	"log"
+	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 )
 
 var wsConn *websocket.Conn
+var wsMutex sync.Mutex
 var wsAddr = "ws://192.168.1.74:81/ws" // Replace with ESP32 IP from Serial Monitor
 
 func initWebSocket() error {
@@ -22,6 +25,8 @@ func initWebSocket() error {
 }
 
 func SendWSMessage(message string) error {
+	wsMutex.Lock()
+	defer wsMutex.Unlock()
 	if wsConn == nil {
 		if err := initWebSocket(); err != nil {
 			return err
@@ -31,7 +36,8 @@ func SendWSMessage(message string) error {
 	err := wsConn.WriteMessage(websocket.TextMessage, []byte(message))
 	if err != nil {
 		log.Printf("WebSocket write failed: %v", err)
-		wsConn = nil // Reset connection
+		wsConn.Close()
+		wsConn = nil
 		return err
 	}
 	return nil
@@ -42,10 +48,17 @@ func main() {
 	e.Static("/static", "static")
 	RegisterRoutes(e)
 
-	// Initialize WebSocket
-	if err := initWebSocket(); err != nil {
-		log.Println("Initial WebSocket connection failed, will retry on demand")
-	}
+	// Initialize WebSocket with retry
+	go func() {
+		for {
+			wsMutex.Lock()
+			if wsConn == nil {
+				initWebSocket()
+			}
+			wsMutex.Unlock()
+			time.Sleep(5 * time.Second)
+		}
+	}()
 
 	if err := e.Start(":8080"); err != nil {
 		log.Fatal(err)

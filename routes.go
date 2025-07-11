@@ -13,7 +13,8 @@ func RegisterRoutes(e *echo.Echo) {
 
 	// Define routes
 	e.GET("/", HomeHandler)
-	e.POST("/set-color", SetColorHandler)
+	e.POST("/set-hsv", SetHSVHandler)
+	e.POST("/set-hex", SetHexHandler)
 	e.POST("/set-brightness", SetBrightnessHandler)
 	e.POST("/set-animation", SetAnimationHandler)
 	e.POST("/set-power", SetPowerHandler)

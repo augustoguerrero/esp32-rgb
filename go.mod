@@ -3,7 +3,7 @@ module esp32-rgb
 go 1.24
 
 require (
-	github.com/a-h/templ v0.3.865
+	github.com/a-h/templ v0.3.906
 	github.com/gorilla/sessions v1.4.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/labstack/echo-contrib v0.17.3
