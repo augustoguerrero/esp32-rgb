@@ -126,11 +126,13 @@ templ AnimationSelectorSolid() {
 			<option value="chase">Chase</option>
 			<option value="twinkle">Twinkle</option>
 			<option value="space">Space</option>
+			<option value="fire">Fire</option>
+			<option value="sections">Sections</option>
+			<option value="flag">Flag</option>
 		</select>
 	</form>
 }
 
-// Similar for other AnimationSelectors...
 templ AnimationSelectorRainbow() {
 	<form>
 		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
@@ -147,6 +149,9 @@ templ AnimationSelectorRainbow() {
 			<option value="chase">Chase</option>
 			<option value="twinkle">Twinkle</option>
 			<option value="space">Space</option>
+			<option value="fire">Fire</option>
+			<option value="sections">Sections</option>
+			<option value="flag">Flag</option>
 		</select>
 	</form>
 }
@@ -167,6 +172,9 @@ templ AnimationSelectorFade() {
 			<option value="chase">Chase</option>
 			<option value="twinkle">Twinkle</option>
 			<option value="space">Space</option>
+			<option value="fire">Fire</option>
+			<option value="sections">Sections</option>
+			<option value="flag">Flag</option>
 		</select>
 	</form>
 }
@@ -187,6 +195,9 @@ templ AnimationSelectorChase() {
 			<option value="chase" selected>Chase</option>
 			<option value="twinkle">Twinkle</option>
 			<option value="space">Space</option>
+			<option value="fire">Fire</option>
+			<option value="sections">Sections</option>
+			<option value="flag">Flag</option>
 		</select>
 	</form>
 }
@@ -207,6 +218,9 @@ templ AnimationSelectorTwinkle() {
 			<option value="chase">Chase</option>
 			<option value="twinkle" selected>Twinkle</option>
 			<option value="space">Space</option>
+			<option value="fire">Fire</option>
+			<option value="sections">Sections</option>
+			<option value="flag">Flag</option>
 		</select>
 	</form>
 }
@@ -227,6 +241,78 @@ templ AnimationSelectorSpace() {
 			<option value="chase">Chase</option>
 			<option value="twinkle">Twinkle</option>
 			<option value="space" selected>Space</option>
+			<option value="fire">Fire</option>
+			<option value="sections">Sections</option>
+			<option value="flag">Flag</option>
+		</select>
+	</form>
+}
+
+templ AnimationSelectorFire() {
+	<form>
+		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
+		<select
+			name="animation"
+			hx-post="/set-animation"
+			hx-target="body"
+			hx-swap="outerHTML"
+			class="w-full p-2 border rounded-md"
+		>
+			<option value="solid">Solid Color</option>
+			<option value="rainbow">Rainbow</option>
+			<option value="fade">Fade</option>
+			<option value="chase">Chase</option>
+			<option value="twinkle">Twinkle</option>
+			<option value="space">Space</option>
+			<option value="fire" selected>Fire</option>
+			<option value="sections">Sections</option>
+			<option value="flag">Flag</option>
+		</select>
+	</form>
+}
+
+templ AnimationSelectorSections() {
+	<form>
+		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
+		<select
+			name="animation"
+			hx-post="/set-animation"
+			hx-target="body"
+			hx-swap="outerHTML"
+			class="w-full p-2 border rounded-md"
+		>
+			<option value="solid">Solid Color</option>
+			<option value="rainbow">Rainbow</option>
+			<option value="fade">Fade</option>
+			<option value="chase">Chase</option>
+			<option value="twinkle">Twinkle</option>
+			<option value="space">Space</option>
+			<option value="fire">Fire</option>
+			<option value="sections" selected>Sections</option>
+			<option value="flag">Flag</option>
+		</select>
+	</form>
+}
+
+templ AnimationSelectorFlag() {
+	<form>
+		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
+		<select
+			name="animation"
+			hx-post="/set-animation"
+			hx-target="body"
+			hx-swap="outerHTML"
+			class="w-full p-2 border rounded-md"
+		>
+			<option value="solid">Solid Color</option>
+			<option value="rainbow">Rainbow</option>
+			<option value="fade">Fade</option>
+			<option value="chase">Chase</option>
+			<option value="twinkle">Twinkle</option>
+			<option value="space">Space</option>
+			<option value="fire">Fire</option>
+			<option value="sections">Sections</option>
+			<option value="flag" selected>Flag</option>
 		</select>
 	</form>
 }

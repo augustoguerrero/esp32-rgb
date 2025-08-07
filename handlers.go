@@ -68,6 +68,15 @@ func renderControlPanel(c echo.Context, currentBrightness, currentAnimation stri
 	} else if currentAnimation == "space" {
 		brightnessComponent = ui.BrightnessAnim(currentBrightness)
 		animationSelector = ui.AnimationSelectorSpace()
+	} else if currentAnimation == "fire" {
+		brightnessComponent = ui.BrightnessAnim(currentBrightness)
+		animationSelector = ui.AnimationSelectorFire()
+	} else if currentAnimation == "sections" {
+		brightnessComponent = ui.BrightnessAnim(currentBrightness)
+		animationSelector = ui.AnimationSelectorSections()
+	} else if currentAnimation == "flag" {
+		brightnessComponent = ui.BrightnessAnim(currentBrightness)
+		animationSelector = ui.AnimationSelectorFlag()
 	}
 	return Render(c, ui.Main(ui.ControlPanel(currentBrightness, currentAnimation, brightnessComponent, animationSelector, isOn, showColorPicker, hueStr, satStr, valStr, currentHex, satLeft, satRight, valRight)))
 }
@@ -86,12 +95,12 @@ func HomeHandler(c echo.Context) error {
 	}
 	currentBrightness, ok := sess.Values["brightness"].(string)
 	if !ok {
-		currentBrightness = "120"
+		currentBrightness = "128"
 		sess.Values["brightness"] = currentBrightness
 	}
 	currentAnimation, ok := sess.Values["animation"].(string)
 	if !ok {
-		currentAnimation = "solid"
+		currentAnimation = "rainbow"
 		sess.Values["animation"] = currentAnimation
 	}
 	isOn, ok := sess.Values["isOn"].(bool)
