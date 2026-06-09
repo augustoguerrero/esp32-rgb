@@ -1,4 +1,5 @@
 # ESP32 RGB LED Strip Editor
+<img width="1878" height="424" alt="image" src="https://github.com/user-attachments/assets/569e38da-2fbf-488c-a566-5df7c7d27dd3" />
 
 A web-based animation editor for controlling a WS2815 LED strip via an ESP32. All animation logic runs on the Go server — the ESP32 acts as a dumb pixel renderer that displays whatever the server sends.
 
