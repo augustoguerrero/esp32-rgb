@@ -1,401 +1,259 @@
 package main
 
 import (
+	"encoding/json"
 	"esp32-rgb/ui"
-	"fmt"
-	"github.com/a-h/templ"
-	"github.com/labstack/echo-contrib/session"
-	"github.com/labstack/echo/v4"
-	"log"
-	"math"
 	"net/http"
 	"strconv"
-	"strings"
+
+	"github.com/gorilla/websocket"
+	"github.com/labstack/echo/v4"
 )
 
-func renderControlPanel(c echo.Context, currentBrightness, currentAnimation string, isOn bool) error {
-	var brightnessComponent templ.Component
-	var animationSelector templ.Component
-	var showColorPicker bool
-	hueStr, satStr, valStr, currentHex, satLeft, satRight, valRight := "", "", "", "", "", "", ""
-	sess, _ := session.Get("session", c) // Assume no error for simplicity
-
-	currentHue, ok := sess.Values["hue"].(int)
-	if !ok {
-		currentHue = 0
-	}
-	currentSat, ok := sess.Values["sat"].(int)
-	if !ok {
-		currentSat = 0
-	}
-	currentVal, ok := sess.Values["val"].(int)
-	if !ok {
-		currentVal = 100
-	}
-
-	if currentAnimation == "solid" {
-		showColorPicker = true
-		hueStr = strconv.Itoa(currentHue)
-		satStr = strconv.Itoa(currentSat)
-		valStr = strconv.Itoa(currentVal)
-		r, g, b := hsvToRGB(float64(currentHue), float64(currentSat), float64(currentVal))
-		currentHex = rgbToHex(r, g, b)
-
-		// Sat left: s=0
-		gr, gg, gb := hsvToRGB(float64(currentHue), 0, float64(currentVal))
-		satLeft = rgbToHex(gr, gg, gb)
-		// Sat right: s=100
-		sr, sg, sb := hsvToRGB(float64(currentHue), 100, float64(currentVal))
-		satRight = rgbToHex(sr, sg, sb)
-		// Val right: v=100
-		vr, vg, vb := hsvToRGB(float64(currentHue), float64(currentSat), 100)
-		valRight = rgbToHex(vr, vg, vb)
-
-		brightnessComponent = ui.BrightnessSolid(currentBrightness)
-		animationSelector = ui.AnimationSelectorSolid()
-	} else if currentAnimation == "rainbow" {
-		brightnessComponent = ui.BrightnessAnim(currentBrightness)
-		animationSelector = ui.AnimationSelectorRainbow()
-	} else if currentAnimation == "fade" {
-		brightnessComponent = ui.BrightnessAnim(currentBrightness)
-		animationSelector = ui.AnimationSelectorFade()
-	} else if currentAnimation == "chase" {
-		brightnessComponent = ui.BrightnessAnim(currentBrightness)
-		animationSelector = ui.AnimationSelectorChase()
-	} else if currentAnimation == "twinkle" {
-		brightnessComponent = ui.BrightnessAnim(currentBrightness)
-		animationSelector = ui.AnimationSelectorTwinkle()
-	} else if currentAnimation == "space" {
-		brightnessComponent = ui.BrightnessAnim(currentBrightness)
-		animationSelector = ui.AnimationSelectorSpace()
-	} else if currentAnimation == "fire" {
-		brightnessComponent = ui.BrightnessAnim(currentBrightness)
-		animationSelector = ui.AnimationSelectorFire()
-	} else if currentAnimation == "sections" {
-		brightnessComponent = ui.BrightnessAnim(currentBrightness)
-		animationSelector = ui.AnimationSelectorSections()
-	} else if currentAnimation == "flag" {
-		brightnessComponent = ui.BrightnessAnim(currentBrightness)
-		animationSelector = ui.AnimationSelectorFlag()
-	}
-	return Render(c, ui.Main(ui.ControlPanel(currentBrightness, currentAnimation, brightnessComponent, animationSelector, isOn, showColorPicker, hueStr, satStr, valStr, currentHex, satLeft, satRight, valRight)))
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
+// HomeHandler renders the editor page.
 func HomeHandler(c echo.Context) error {
-	sess, err := session.Get("session", c)
-	if err != nil {
-		log.Println("Session error:", err)
-		return c.String(http.StatusInternalServerError, "Failed to get session")
-	}
-	_, ok := sess.Values["hue"]
-	if !ok {
-		sess.Values["hue"] = 0
-		sess.Values["sat"] = 0
-		sess.Values["val"] = 100
-	}
-	currentBrightness, ok := sess.Values["brightness"].(string)
-	if !ok {
-		currentBrightness = "128"
-		sess.Values["brightness"] = currentBrightness
-	}
-	currentAnimation, ok := sess.Values["animation"].(string)
-	if !ok {
-		currentAnimation = "rainbow"
-		sess.Values["animation"] = currentAnimation
-	}
-	isOn, ok := sess.Values["isOn"].(bool)
-	if !ok {
-		isOn = true
-		sess.Values["isOn"] = isOn
-	}
-	if err := sess.Save(c.Request(), c.Response()); err != nil {
-		log.Println("Session save error:", err)
-		return c.String(http.StatusInternalServerError, "Failed to save session")
-	}
-	log.Printf("HomeHandler: hue=%d, sat=%d, val=%d, brightness=%s, animation=%s, isOn=%v", sess.Values["hue"], sess.Values["sat"], sess.Values["val"], currentBrightness, currentAnimation, isOn)
-	return renderControlPanel(c, currentBrightness, currentAnimation, isOn)
+	return Render(c, ui.Main(ui.EditorPage(cfg.NumLEDs)))
 }
 
-func SetHSVHandler(c echo.Context) error {
-	sess, err := session.Get("session", c)
+// BrowserWSHandler upgrades the connection to WebSocket and relays
+// engine events (frames + status) to the browser, and accepts setFrame
+// commands from the browser.
+func BrowserWSHandler(c echo.Context) error {
+	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
-		log.Println("Session error:", err)
-		return c.String(http.StatusInternalServerError, "Failed to get session")
+		return err
 	}
-	hueStr := c.FormValue("hue")
-	satStr := c.FormValue("sat")
-	valStr := c.FormValue("val")
-	if hueStr != "" {
-		hue, _ := strconv.Atoi(hueStr)
-		sess.Values["hue"] = hue
-	}
-	if satStr != "" {
-		sat, _ := strconv.Atoi(satStr)
-		sess.Values["sat"] = sat
-	}
-	if valStr != "" {
-		val, _ := strconv.Atoi(valStr)
-		sess.Values["val"] = val
-	}
-	currentHue := sess.Values["hue"].(int)
-	currentSat := sess.Values["sat"].(int)
-	currentVal := sess.Values["val"].(int)
-	currentAnimation := sess.Values["animation"].(string)
-	isOn, _ := sess.Values["isOn"].(bool)
-	if isOn && currentAnimation == "solid" {
-		r, g, b := hsvToRGB(float64(currentHue), float64(currentSat), float64(currentVal))
-		brightness := sess.Values["brightness"].(string)
-		message := fmt.Sprintf("color:%d,%d,%d,%s", r, g, b, brightness)
-		if err := SendWSMessage(message); err != nil {
-			log.Println("WebSocket error:", err)
-			return c.String(http.StatusInternalServerError, "Failed to update color")
-		}
-	}
-	if err := sess.Save(c.Request(), c.Response()); err != nil {
-		log.Println("Session save error:", err)
-		return c.String(http.StatusInternalServerError, "Failed to save session")
-	}
-	return renderControlPanel(c, sess.Values["brightness"].(string), currentAnimation, isOn)
-}
+	defer conn.Close()
 
-func SetHexHandler(c echo.Context) error {
-	sess, err := session.Get("session", c)
-	if err != nil {
-		log.Println("Session error:", err)
-		return c.String(http.StatusInternalServerError, "Failed to get session")
-	}
-	hex := c.FormValue("hex")
-	if hex == "" || len(hex) != 7 || !strings.HasPrefix(hex, "#") {
-		return c.String(http.StatusBadRequest, "Invalid hex code")
-	}
-	r, g, b := hexToRGB(hex)
-	h, s, v := rgbToHSV(r, g, b)
-	sess.Values["hue"] = int(h)
-	sess.Values["sat"] = int(s)
-	sess.Values["val"] = int(v)
-	currentAnimation := sess.Values["animation"].(string)
-	isOn, _ := sess.Values["isOn"].(bool)
-	if isOn && currentAnimation == "solid" {
-		brightness := sess.Values["brightness"].(string)
-		message := fmt.Sprintf("color:%d,%d,%d,%s", r, g, b, brightness)
-		if err := SendWSMessage(message); err != nil {
-			log.Println("WebSocket error:", err)
-			return c.String(http.StatusInternalServerError, "Failed to update color")
-		}
-	}
-	if err := sess.Save(c.Request(), c.Response()); err != nil {
-		log.Println("Session save error:", err)
-		return c.String(http.StatusInternalServerError, "Failed to save session")
-	}
-	return renderControlPanel(c, sess.Values["brightness"].(string), currentAnimation, isOn)
-}
+	ch := hub.Subscribe()
+	defer hub.Unsubscribe(ch)
 
-func SetBrightnessHandler(c echo.Context) error {
-	sess, err := session.Get("session", c)
-	if err != nil {
-		log.Println("Session error:", err)
-		return c.String(http.StatusInternalServerError, "Failed to get session")
+	// Send initial status immediately
+	statusMsg, _ := json.Marshal(engine.Status())
+	_ = conn.WriteMessage(websocket.TextMessage, statusMsg)
+
+	// Send current frame
+	frame := engine.CurrentFrame()
+	ledsJSON := make([][3]uint8, len(frame))
+	for i, l := range frame {
+		ledsJSON[i] = [3]uint8{l.R, l.G, l.B}
 	}
-	brightness := c.FormValue("brightness")
-	if brightness == "" {
-		log.Println("Invalid brightness")
-		return c.String(http.StatusBadRequest, "Invalid brightness")
-	}
-	sess.Values["brightness"] = brightness
-	isOn, ok := sess.Values["isOn"].(bool)
-	if !ok {
-		isOn = true
-		sess.Values["isOn"] = isOn
-	}
-	currentAnimation, _ := sess.Values["animation"].(string)
-	if isOn {
-		if currentAnimation == "solid" {
-			currentHue := sess.Values["hue"].(int)
-			currentSat := sess.Values["sat"].(int)
-			currentVal := sess.Values["val"].(int)
-			r, g, b := hsvToRGB(float64(currentHue), float64(currentSat), float64(currentVal))
-			message := fmt.Sprintf("color:%d,%d,%d,%s", r, g, b, brightness)
-			if err := SendWSMessage(message); err != nil {
-				log.Println("WebSocket error:", err)
-				return c.String(http.StatusInternalServerError, "Failed to update brightness")
-			}
-		} else {
-			message := fmt.Sprintf("brightness:%s", brightness)
-			if err := SendWSMessage(message); err != nil {
-				log.Println("WebSocket error:", err)
-				return c.String(http.StatusInternalServerError, "Failed to update brightness")
+	frameMsg, _ := json.Marshal(map[string]any{"type": "frame", "leds": ledsJSON})
+	_ = conn.WriteMessage(websocket.TextMessage, frameMsg)
+
+	// Fan out engine broadcasts to this client
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for msg := range ch {
+			if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+				return
 			}
 		}
+	}()
+
+	// Read incoming messages from the browser
+	for {
+		_, raw, err := conn.ReadMessage()
+		if err != nil {
+			break
+		}
+		var msg map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &msg); err != nil {
+			continue
+		}
+		typeRaw, ok := msg["type"]
+		if !ok {
+			continue
+		}
+		var msgType string
+		_ = json.Unmarshal(typeRaw, &msgType)
+
+		switch msgType {
+		case "setFrame":
+			var payload struct {
+				LEDs [][3]uint8 `json:"leds"`
+			}
+			if err := json.Unmarshal(raw, &payload); err == nil {
+				leds := jsonToRGBs(payload.LEDs, cfg.NumLEDs)
+				engine.SetLive(leds)
+			}
+		case "ping":
+			pong, _ := json.Marshal(map[string]string{"type": "pong"})
+			_ = conn.WriteMessage(websocket.TextMessage, pong)
+		}
 	}
-	if err := sess.Save(c.Request(), c.Response()); err != nil {
-		log.Println("Session save error:", err)
-		return c.String(http.StatusInternalServerError, "Failed to save session")
-	}
-	log.Println("SetBrightness: brightness=", brightness)
-	return renderControlPanel(c, brightness, currentAnimation, isOn)
+	<-done
+	return nil
 }
 
-func SetAnimationHandler(c echo.Context) error {
-	sess, err := session.Get("session", c)
+// ---- strip control ----------------------------------------------------------
+
+func PowerHandler(c echo.Context) error {
+	var body struct {
+		Power string `json:"power"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid body"})
+	}
+	switch body.Power {
+	case "on":
+		engine.SetPower(true)
+	case "off":
+		engine.SetPower(false)
+	default:
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "power must be 'on' or 'off'"})
+	}
+	return c.JSON(http.StatusOK, engine.Status())
+}
+
+func BrightnessHandler(c echo.Context) error {
+	var body struct {
+		Brightness int `json:"brightness"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid body"})
+	}
+	if body.Brightness < 0 || body.Brightness > 255 {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "brightness must be 0-255"})
+	}
+	engine.SetBrightness(uint8(body.Brightness))
+	return c.JSON(http.StatusOK, engine.Status())
+}
+
+func StopHandler(c echo.Context) error {
+	engine.Stop()
+	return c.JSON(http.StatusOK, engine.Status())
+}
+
+func PlayHandler(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		log.Println("Session error:", err)
-		return c.String(http.StatusInternalServerError, "Failed to get session")
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
 	}
-	animation := c.FormValue("animation")
-	if animation == "" {
-		log.Println("Invalid animation")
-		return c.String(http.StatusBadRequest, "Invalid animation")
+	if err := engine.Play(id); err != nil {
+		return c.JSON(http.StatusNotFound, echo.Map{"error": err.Error()})
 	}
-	sess.Values["animation"] = animation
-	isOn, ok := sess.Values["isOn"].(bool)
-	if !ok {
-		isOn = true
-		sess.Values["isOn"] = isOn
-	}
-	if isOn {
-		message := fmt.Sprintf("animation:%s", animation)
-		if err := SendWSMessage(message); err != nil {
-			log.Println("WebSocket error:", err)
-			return c.String(http.StatusInternalServerError, "Failed to update animation")
-		}
-		if animation == "solid" {
-			currentHue := sess.Values["hue"].(int)
-			currentSat := sess.Values["sat"].(int)
-			currentVal := sess.Values["val"].(int)
-			r, g, b := hsvToRGB(float64(currentHue), float64(currentSat), float64(currentVal))
-			brightness := sess.Values["brightness"].(string)
-			message = fmt.Sprintf("color:%d,%d,%d,%s", r, g, b, brightness)
-			if err := SendWSMessage(message); err != nil {
-				log.Println("WebSocket error:", err)
-				return c.String(http.StatusInternalServerError, "Failed to update color on animation change")
-			}
-		}
-	}
-	if err := sess.Save(c.Request(), c.Response()); err != nil {
-		log.Println("Session save error:", err)
-		return c.String(http.StatusInternalServerError, "Failed to save session")
-	}
-	log.Println("SetAnimation: animation=", animation)
-	return renderControlPanel(c, sess.Values["brightness"].(string), animation, isOn)
+	return c.JSON(http.StatusOK, engine.Status())
 }
 
-func SetPowerHandler(c echo.Context) error {
-	sess, err := session.Get("session", c)
+func SetFrameHandler(c echo.Context) error {
+	var body struct {
+		LEDs [][3]uint8 `json:"leds"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid body"})
+	}
+	leds := jsonToRGBs(body.LEDs, cfg.NumLEDs)
+	engine.SetLive(leds)
+	return c.JSON(http.StatusOK, echo.Map{"ok": true})
+}
+
+// ---- animation CRUD ---------------------------------------------------------
+
+func ListAnimationsHandler(c echo.Context) error {
+	list, err := store.ListAnimations()
 	if err != nil {
-		log.Println("Session error:", err)
-		return c.String(http.StatusInternalServerError, "Failed to get session")
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 	}
-	power := c.FormValue("power")
-	if power != "on" && power != "off" {
-		log.Println("Invalid power value:", power)
-		return c.String(http.StatusBadRequest, "Invalid power value")
+	if list == nil {
+		list = []Animation{}
 	}
-	isOn := power == "on"
-	sess.Values["isOn"] = isOn
-	message := fmt.Sprintf("power:%s", power)
-	if err := SendWSMessage(message); err != nil {
-		log.Println("WebSocket error:", err)
-		return c.String(http.StatusInternalServerError, "Failed to update power state")
+	return c.JSON(http.StatusOK, list)
+}
+
+func GetAnimationHandler(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
 	}
-	if isOn {
-		currentAnimation := sess.Values["animation"].(string)
-		currentBrightness := sess.Values["brightness"].(string)
-		if currentAnimation == "solid" {
-			currentHue := sess.Values["hue"].(int)
-			currentSat := sess.Values["sat"].(int)
-			currentVal := sess.Values["val"].(int)
-			r, g, b := hsvToRGB(float64(currentHue), float64(currentSat), float64(currentVal))
-			message := fmt.Sprintf("color:%d,%d,%d,%s", r, g, b, currentBrightness)
-			if err := SendWSMessage(message); err != nil {
-				log.Println("WebSocket error:", err)
-				return c.String(http.StatusInternalServerError, "Failed to restore color")
-			}
-		} else {
-			message := fmt.Sprintf("animation:%s", currentAnimation)
-			if err := SendWSMessage(message); err != nil {
-				log.Println("WebSocket error:", err)
-				return c.String(http.StatusInternalServerError, "Failed to restore animation")
-			}
-			message = fmt.Sprintf("brightness:%s", currentBrightness)
-			if err := SendWSMessage(message); err != nil {
-				log.Println("WebSocket error:", err)
-				return c.String(http.StatusInternalServerError, "Failed to restore brightness")
-			}
+	anim, err := store.GetAnimation(id)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, echo.Map{"error": "not found"})
+	}
+	return c.JSON(http.StatusOK, anim)
+}
+
+func CreateAnimationHandler(c echo.Context) error {
+	var body struct {
+		Name   string  `json:"name"`
+		FPS    int     `json:"fps"`
+		Loop   bool    `json:"loop"`
+		Frames []Frame `json:"frames"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid body"})
+	}
+	if body.Name == "" {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "name required"})
+	}
+	if body.FPS <= 0 {
+		body.FPS = 30
+	}
+
+	id, err := store.CreateAnimation(body.Name, body.FPS, body.Loop)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+	}
+	if len(body.Frames) > 0 {
+		if err := store.SetFrames(id, body.Frames); err != nil {
+			return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 		}
 	}
-	if err := sess.Save(c.Request(), c.Response()); err != nil {
-		log.Println("Session save error:", err)
-		return c.String(http.StatusInternalServerError, "Failed to save session")
+	anim, _ := store.GetAnimation(id)
+	return c.JSON(http.StatusCreated, anim)
+}
+
+func UpdateAnimationHandler(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
 	}
-	log.Printf("SetPower: isOn=%v", isOn)
-	return renderControlPanel(c, sess.Values["brightness"].(string), sess.Values["animation"].(string), isOn)
-}
-
-func hexToRGB(hex string) (int, int, int) {
-	hex = strings.TrimPrefix(hex, "#")
-	var r, g, b int
-	fmt.Sscanf(hex, "%02x%02x%02x", &r, &g, &b)
-	return r, g, b
-}
-
-func rgbToHex(r, g, b int) string {
-	return fmt.Sprintf("#%02X%02X%02X", r, g, b)
-}
-
-func hsvToRGB(h, s, v float64) (int, int, int) {
-	s /= 100
-	v /= 100
-	if s == 0 {
-		rr := int(v * 255)
-		return rr, rr, rr
+	var body struct {
+		Name   string  `json:"name"`
+		FPS    int     `json:"fps"`
+		Loop   bool    `json:"loop"`
+		Frames []Frame `json:"frames"`
 	}
-	h /= 60
-	i := math.Floor(h)
-	f := h - i
-	p := v * (1 - s)
-	q := v * (1 - s*f)
-	t := v * (1 - s*(1-f))
-	var rr, gg, bb float64
-	switch int(i) % 6 {
-	case 0:
-		rr, gg, bb = v, t, p
-	case 1:
-		rr, gg, bb = q, v, p
-	case 2:
-		rr, gg, bb = p, v, t
-	case 3:
-		rr, gg, bb = p, q, v
-	case 4:
-		rr, gg, bb = t, p, v
-	case 5:
-		rr, gg, bb = v, p, q
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid body"})
 	}
-	return int(rr * 255), int(gg * 255), int(bb * 255)
-}
-
-func rgbToHSV(r, g, b int) (float64, float64, float64) {
-	rf, gf, bf := float64(r)/255, float64(g)/255, float64(b)/255
-	maxVal := math.Max(rf, math.Max(gf, bf))
-	minVal := math.Min(rf, math.Min(gf, bf))
-	delta := maxVal - minVal
-	var h float64
-	if delta == 0 {
-		h = 0
-	} else if maxVal == rf {
-		h = (gf-bf)/delta + 0
-		if gf < bf {
-			h += 6
+	if body.FPS <= 0 {
+		body.FPS = 30
+	}
+	if err := store.UpdateAnimation(id, body.Name, body.FPS, body.Loop); err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+	}
+	if body.Frames != nil {
+		if err := store.SetFrames(id, body.Frames); err != nil {
+			return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 		}
-	} else if maxVal == gf {
-		h = (bf-rf)/delta + 2
-	} else {
-		h = (rf-gf)/delta + 4
 	}
-	h *= 60
-	var ss float64
-	if maxVal != 0 {
-		ss = delta / maxVal
+	anim, _ := store.GetAnimation(id)
+	return c.JSON(http.StatusOK, anim)
+}
+
+func DeleteAnimationHandler(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid id"})
 	}
-	vv := maxVal
-	return h, ss * 100, vv * 100
+	if err := store.DeleteAnimation(id); err != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// ---- helpers ----------------------------------------------------------------
+
+func jsonToRGBs(src [][3]uint8, numLEDs int) []RGB {
+	leds := make([]RGB, numLEDs)
+	for i := 0; i < numLEDs && i < len(src); i++ {
+		leds[i] = RGB{src[i][0], src[i][1], src[i][2]}
+	}
+	return leds
 }

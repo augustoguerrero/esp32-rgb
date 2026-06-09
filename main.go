@@ -2,65 +2,53 @@ package main
 
 import (
 	"log"
-	"sync"
-	"time"
+	"os"
+	"path/filepath"
 
-	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 )
 
-var wsConn *websocket.Conn
-var wsMutex sync.Mutex
-var wsAddr = "ws://192.168.1.74:81/ws" // Replace with ESP32 IP from Serial Monitor
-
-func initWebSocket() error {
-	var err error
-	wsConn, _, err = websocket.DefaultDialer.Dial(wsAddr, nil)
-	if err != nil {
-		log.Printf("WebSocket connection failed: %v", err)
-		return err
-	}
-	log.Println("WebSocket connected to", wsAddr)
-	return nil
-}
-
-func SendWSMessage(message string) error {
-	wsMutex.Lock()
-	defer wsMutex.Unlock()
-	if wsConn == nil {
-		if err := initWebSocket(); err != nil {
-			return err
-		}
-	}
-	log.Println("Sending WebSocket message:", message)
-	err := wsConn.WriteMessage(websocket.TextMessage, []byte(message))
-	if err != nil {
-		log.Printf("WebSocket write failed: %v", err)
-		wsConn.Close()
-		wsConn = nil
-		return err
-	}
-	return nil
-}
+var (
+	cfg    Config
+	store  *Store
+	engine *Engine
+	hub    *Hub
+)
 
 func main() {
+	cfg = LoadConfig()
+
+	// Ensure the data directory exists
+	if err := os.MkdirAll(filepath.Dir(cfg.DBPath), 0755); err != nil {
+		log.Fatalf("create data dir: %v", err)
+	}
+
+	// Open SQLite store
+	var err error
+	store, err = InitDB(cfg.DBPath, cfg.NumLEDs)
+	if err != nil {
+		log.Fatalf("init db: %v", err)
+	}
+	defer store.Close()
+
+	// Browser WebSocket hub
+	hub = newHub()
+
+	// Animation engine — sends frames to ESP32
+	engine = NewEngine(store, cfg.NumLEDs, hub, func(msg string) error {
+		return SendESP32(cfg.ESP32WsAddr, msg)
+	})
+
+	// Keep ESP32 connection alive
+	StartESP32Reconnect(cfg.ESP32WsAddr)
+
 	e := echo.New()
+	e.HideBanner = true
 	e.Static("/static", "static")
-	RegisterRoutes(e)
+	RegisterRoutes(e, cfg)
 
-	// Initialize WebSocket with retry
-	go func() {
-		for {
-			wsMutex.Lock()
-			if wsConn == nil {
-				initWebSocket()
-			}
-			wsMutex.Unlock()
-			time.Sleep(5 * time.Second)
-		}
-	}()
-
-	if err := e.Start(":8080"); err != nil {
+	log.Printf("Starting server on %s", cfg.Port)
+	if err := e.Start(cfg.Port); err != nil {
 		log.Fatal(err)
 	}
 }

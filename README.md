@@ -1,177 +1,166 @@
-# ESP32 RGB LED Strip Controller
+# ESP32 RGB LED Strip Editor
 
-This project is a web-based application for controlling an ESP32-connected RGB LED strip. It allows users to adjust color, brightness, power state, and animations through a responsive UI. The app leverages Go for the backend, HTMX for dynamic updates, TailwindCSS for styling, Templ for server-side rendering, and WebSocket for real-time communication with the ESP32.
+A web-based animation editor for controlling a WS2815 LED strip via an ESP32. All animation logic runs on the Go server — the ESP32 acts as a dumb pixel renderer that displays whatever the server sends.
+
+## Architecture
+
+```
+Browser ←── WS /ws ──→ Go Server ←── WS ──→ ESP32
+   (paint, timeline,    (engine,     (FastLED,
+    live preview)        SQLite)      frame render)
+```
+
+- **Go server** is the brain: manages animation state, runs playback loops, stores custom animations in SQLite, and streams frames to the ESP32 at up to 30fps.
+- **ESP32** just calls `FastLED.show()` on whatever RGB frame it receives. No internal animation logic.
+- **Browser** connects over WebSocket for live preview and sends paint/frame commands directly.
 
 ## Features
-- **Power Toggle**: Turn the LED strip on/off.
-- **Color Selection**: Choose from a grid of predefined colors so it can be used on a touch display.
-- **Brightness Control**: Adjust brightness (0-255) via a slider; minimum sets strip off.
-- **Animation Modes**: Select Solid Color, Rainbow, Fade, Chase, or Twinkle.
-- **Real-Time Updates**: Changes are sent instantly to the ESP32 via WebSocket.
-- **Dynamic UI**: HTMX enables seamless updates without full page reloads.
-- **Responsive Design**: TailwindCSS ensures a clean, mobile-friendly interface.
-- **Session Persistence**: Saves user settings (color, brightness, animation, power state) across sessions.
+
+- **Animation editor** — paint individual LEDs by clicking/dragging on a 99-LED strip visualizer
+- **4 paint tools** — Paint, Fill All, Gradient, Clear
+- **HSV color picker** — hue/saturation/value sliders + hex input
+- **Frame timeline** — build multi-frame animations with per-frame durations, mini-canvas thumbnails
+- **Live preview** — every edit is pushed to the real strip in real time over WebSocket
+- **Local playback** — preview animations in the browser at configurable FPS with loop support
+- **Save / load** — animations persisted to SQLite; load them back into the editor or play them directly on the strip
+- **Power & brightness** — global controls in the header, sent to ESP32 immediately
+- **OTA firmware updates** — ESP32 runs ArduinoOTA; hostname `ESP32_LED_Strip`
 
 ## Tech Stack
-- **Backend**: Go with Echo framework for routing and session management.
-- **Frontend**: Templ for server-side rendering, HTMX for dynamic client-side interactions, TailwindCSS for styling.
-- **ESP32**: Arduino-based firmware using FastLED for LED control and WebSocket for communication.
-- **WebSocket**: Enables real-time bidirectional communication between the server and ESP32.
 
-## Prerequisites
-- **Go**: Version 1.18 or higher.
-- **TailwindCSS**: Precompiled binary (no Node.js/npm required).
-- **Arduino IDE**: For uploading ESP32 firmware.
-- **ESP32 Board**: Compatible with WS2815 LED strips.
-- **WiFi Network**: For ESP32 connectivity (configured with SSID and password).
-- **Hardware**:
-    - WS2815 LED strip (99 LEDs, configurable).
-    - ESP32 development board.
-    - Suitable power supply for the LED strip.
+- **Backend**: Go 1.25, Echo v4, Templ, gorilla/websocket, modernc.org/sqlite (CGO-free)
+- **Frontend**: Vanilla JS, TailwindCSS (CDN), no framework
+- **ESP32**: Arduino, FastLED, WebSocketsServer, ArduinoOTA
 
-## Installation
+## Hardware
 
-### ESP32 Firmware
-1. **Install Arduino Libraries**:
-    - `WiFi.h`
-    - `WebSocketsServer` (by Markus Sattler)
-    - `FastLED`
-    - `ArduinoOTA`
+- ESP32 development board
+- WS2815 LED strip (default: 99 LEDs, configurable)
+- 12V power supply for the strip
+- Data pin: GPIO 18
 
-2. **Configure `sketch_apr10a.ino`**:
-    - Update WiFi credentials:
-      ```cpp
-      const char* ssid = "YOUR_SSID";
-      const char* password = "YOUR_PASSWORD";
-      ```
-    - Adjust LED strip settings if needed:
-      ```cpp
-      #define DATA_PIN 18
-      #define NUM_LEDS 99
-      #define LED_TYPE WS2815
-      #define COLOR_ORDER GRB
-      ```
+## Quick Start
 
-3. **Upload to ESP32**:
-    - Connect the ESP32 to your computer.
-    - Open `sketch_apr10a.ino` in the Arduino IDE.
-    - Select your ESP32 board and port, then upload the sketch.
+### 1. Flash ESP32 firmware
 
-4. **Verify Connection**:
-    - Use the Serial Monitor (115200 baud) to check WiFi connection and IP address.
-    - The ESP32 hosts a WebSocket server at `ws://<ESP32_IP>:81/ws`.
+Open `arduino/WS2815-go.ino` in the Arduino IDE. Update the WiFi credentials:
 
-### Backend (Go Server)
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/augustoguerrero/esp32-rgb.git
-   cd esp32-rgb
-   ```
+```cpp
+const char* ssid     = "YOUR_SSID";
+const char* password = "YOUR_PASSWORD";
+```
 
-2. **Install Go Dependencies**:
-   ```bash
-   go mod tidy
-   ```
+Install the required libraries (Library Manager):
+- `WebSocketsServer` by Markus Sattler
+- `FastLED`
+- `ArduinoOTA`
 
-3. **Install Templ**:
-   ```bash
-   go install github.com/a-h/templ/cmd/templ@latest
-   ```
+Upload via USB. After the first flash, subsequent updates can be done via OTA (hostname: `ESP32_LED_Strip`, port 3232).
 
-4. **Generate Templ Components**:
-   ```bash
-   templ generate
-   ```
+### 2. Run the server
 
-5. **Compile TailwindCSS**:
-   Download the precompiled TailwindCSS binary for your platform from [TailwindCSS releases](https://github.com/tailwindlabs/tailwindcss/releases). Place it in the project directory and run:
-   ```bash
-   ./tailwindcss -i ./input.css -o ./static/output.css
-   ```
-   Replace `./tailwindcss` with the appropriate binary name (e.g., `tailwindcss-linux-x64`).
+**Local:**
+```bash
+cp .env.example .env   # edit ESP32_WS_ADDR to match your ESP32's IP
+make run               # runs templ generate + go build + ./bin/server
+```
 
-6. **Run the Server**:
-   ```bash
-   go run .
-   ```
-   The server runs on `http://localhost:8080`.
+**Docker:**
+```bash
+cp .env.example .env
+docker compose up --build
+```
 
-### Configuration
-- **WebSocket Address**:
-  Update `wsAddr` in `main.go` with the ESP32's IP address:
-  ```go
-  var wsAddr = "ws://<ESP32_IP>:81/ws"
-  ```
-- **Session Secret**:
-  Replace the session key in `routes.go` with a secure value:
-  ```go
-  e.Use(session.Middleware(sessions.NewCookieStore([]byte("your-secret-key"))))
-  ```
+Open `http://localhost:8080`.
 
-## Usage
-1. **Access the Web Interface**:
-   Visit `http://localhost:8080` in a browser.
+## Configuration
 
-2. **Control the LED Strip**:
-    - **Power Toggle**: Check/uncheck to turn the strip on/off (off sends `brightness:0`).
-    - **Color Grid**: Click a color to set a solid color (sets animation to "solid").
-    - **Brightness Slider**: Adjust brightness; sliding to 0 turns off the strip and unchecks the power toggle.
-    - **Animation Selector**: Choose from Solid Color, Rainbow, Fade, Chase, or Twinkle.
+All settings are env vars (see `.env.example`):
 
-3. **Monitor ESP32**:
-   Check the Serial Monitor for WebSocket messages received by the ESP32.
+| Variable | Default | Description |
+|---|---|---|
+| `ESP32_WS_ADDR` | `ws://192.168.1.74:81/ws` | ESP32 WebSocket URL |
+| `PORT` | `8080` | HTTP listen port |
+| `DB_PATH` | `data/animations.db` | SQLite database path |
+| `NUM_LEDS` | `99` | Number of LEDs on the strip |
+| `SESSION_SECRET` | `change-me-in-production` | Cookie signing key |
+
+## ESP32 Command Protocol
+
+The server sends text commands to the ESP32 over WebSocket:
+
+| Command | Description |
+|---|---|
+| `frame:<brightness>,<hex>` | Set all LEDs — hex is `NUM_LEDS × 6` chars (`RRGGBB` per LED) |
+| `pixel:<idx>,<R>,<G>,<B>` | Set a single LED (0-indexed) |
+| `brightness:<0-255>` | Change master brightness |
+| `power:on` / `power:off` | Fade in / fade out |
+
+## REST API
+
+| Method | Path | Body | Description |
+|---|---|---|---|
+| `POST` | `/api/power` | `{"power":"on"\|"off"}` | Toggle strip power |
+| `POST` | `/api/brightness` | `{"brightness":0-255}` | Set brightness |
+| `POST` | `/api/stop` | — | Stop playback |
+| `POST` | `/api/play/:id` | — | Play saved animation |
+| `POST` | `/api/frame` | `{"leds":[[r,g,b],...]}` | Push a static frame |
+| `GET` | `/api/animations` | — | List all saved animations |
+| `POST` | `/api/animations` | `{name, fps, loop, frames:[...]}` | Create animation |
+| `GET` | `/api/animations/:id` | — | Get animation with frames |
+| `PUT` | `/api/animations/:id` | `{name, fps, loop, frames:[...]}` | Update animation |
+| `DELETE` | `/api/animations/:id` | — | Delete animation |
+
+WebSocket: `GET /ws` — browser connects here for live frame streaming and control.
 
 ## File Structure
-- **Go Backend**:
-    - `main.go`: Sets up Echo server, WebSocket connection, and static file serving.
-    - `routes.go`: Defines routes (`/`, `/set-color`, `/set-brightness`, `/set-animation`, `/set-power`) and session middleware.
-    - `handlers.go`: Processes HTTP requests, manages sessions, and sends WebSocket messages.
-    - `render.go`: Renders Templ components with Echo.
-- **Frontend**:
-    - `ui/components.templ`: Templ components for UI (PowerToggle, ColorGrid, Brightness sliders, Animation selectors, ControlPanel).
-    - `ui/layouts.templ`: Main layout wrapper.
-    - `input.css` / `static/output.css`: TailwindCSS input and compiled output.
-    - `static/`: Serves CSS and static assets.
-- **ESP32 Firmware**:
-    - `sketch_apr10a.ino`: ESP32 code for WiFi, WebSocket, OTA updates, and LED control with FastLED.
 
-## How It Works
-- **Web Interface**:
-    - Templ renders server-side HTML components, styled with TailwindCSS.
-    - HTMX enables dynamic updates by sending POST requests to `/set-*` endpoints, replacing page content without full reloads.
-    - Session data (color, brightness, animation, power state) is stored using `gorilla/sessions`.
+```
+├── arduino/
+│   └── WS2815-go.ino       ESP32 firmware (dumb pixel renderer)
+├── ui/
+│   ├── layouts.templ        HTML shell with editor.js
+│   └── components.templ     EditorPage component
+├── static/
+│   ├── css/output.css       Compiled TailwindCSS
+│   └── js/editor.js         Full editor UI (vanilla JS)
+├── data/                    SQLite database (git-ignored)
+├── config.go                Env var loading
+├── store.go                 SQLite animation persistence
+├── engine.go                Animation engine + ESP32 WS client + browser WS hub
+├── main.go                  Server entry point
+├── routes.go                Route registration
+├── handlers.go              HTTP + WebSocket handlers
+├── render.go                Templ render helper
+├── Makefile
+├── Dockerfile
+└── docker-compose.yml
+```
 
-- **Backend**:
-    - Echo routes handle requests and update session values.
-    - Handlers (`HomeHandler`, `SetColorHandler`, etc.) render the `ControlPanel` component with current settings.
-    - WebSocket messages are sent to the ESP32 (e.g., `color:R,G,B,brightness`, `brightness:value`, `animation:name`).
+## Makefile Targets
 
-- **ESP32**:
-    - Hosts a WebSocket server to receive commands.
-    - Parses messages to set color, brightness, power state (`brightness:0` for off), or animation.
-    - Uses FastLED to drive the LED strip with animations (Solid Color, Rainbow, Fade, Chase, Twinkle).
+```bash
+make build        # templ generate + go build
+make run          # build + run locally
+make docker-build # build Docker image
+make docker-up    # docker compose up --build
+make docker-down  # docker compose down
+```
 
 ## Troubleshooting
-- **Server Fails to Start**:
-    - Ensure port `8080` is free.
-    - Verify Go dependencies (`go mod tidy`).
-- **Templ Errors**:
-    - Run `templ generate` and fix `.templ` file syntax.
-- **ESP32 Not Responding**:
-    - Confirm the ESP32's IP address in `main.go`.
-    - Check Serial Monitor for WiFi/WebSocket errors.
-    - Ensure the ESP32 is on the same network.
-- **UI Not Updating**:
-    - Verify HTMX attributes (`hx-post`, `hx-target`, `hx-swap`) in `components.templ`.
-    - Check browser console for errors.
-- **LEDs Not Changing**:
-    - Monitor WebSocket messages in the ESP32 Serial Monitor.
-    - Confirm `DATA_PIN` and LED settings match hardware.
 
+**ESP32 not connecting**
+- Check `ESP32_WS_ADDR` — confirm the IP with the Arduino Serial Monitor (115200 baud)
+- Ensure the ESP32 and the machine running the server are on the same network
 
-## Contributing
-1. Fork the repository.
-2. Create a feature branch (`git checkout -b feature-name`).
-3. Commit changes (`git commit -m "Add feature"`).
-4. Push to the branch (`git push origin feature-name`).
-5. Open a pull request.
+**Build errors**
+- Run `templ generate` before `go build` (or just use `make build`)
+- Run `go mod tidy` if dependencies are missing
+
+**LEDs not updating**
+- Check `/health` endpoint — `esp32: true` means the server is connected
+- Watch the ESP32 Serial Monitor for incoming `frame:` commands
+
+**OTA upload fails**
+- Confirm the ESP32 is running and reachable at port 3232
+- The OTA hostname is `ESP32_LED_Strip` (mDNS: `ESP32_LED_Strip.local`)

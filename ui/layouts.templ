@@ -6,13 +6,13 @@ templ Main(content templ.Component) {
 	<head>
 		<meta charset="UTF-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-		<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-		<title>LED Strip Control</title>
+		<title>LED Strip Editor</title>
 		<link href="/static/css/output.css" rel="stylesheet"/>
-		<script src="/static/assets/htmx.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 	</head>
-	<body class="flex pt-10 bg-indigo-950 ">
+	<body class="bg-gray-950 text-gray-100 min-h-screen">
 		@content
+		<script src="/static/js/editor.js"></script>
 	</body>
 	</html>
 }

@@ -1,21 +1,38 @@
 package main
 
 import (
-	"github.com/gorilla/sessions"
-	"github.com/labstack/echo-contrib/session"
+	"net/http"
+
 	"github.com/labstack/echo/v4"
 )
 
-// RegisterRoutes sets up the Echo middleware and routes
-func RegisterRoutes(e *echo.Echo) {
-	// Add session middleware
-	e.Use(session.Middleware(sessions.NewCookieStore([]byte("secret-key"))))
-
-	// Define routes
+func RegisterRoutes(e *echo.Echo, cfg Config) {
+	// Page
 	e.GET("/", HomeHandler)
-	e.POST("/set-hsv", SetHSVHandler)
-	e.POST("/set-hex", SetHexHandler)
-	e.POST("/set-brightness", SetBrightnessHandler)
-	e.POST("/set-animation", SetAnimationHandler)
-	e.POST("/set-power", SetPowerHandler)
+
+	// Health
+	e.GET("/health", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]any{
+			"status":    "ok",
+			"esp32":     ESP32Connected(),
+			"num_leds":  cfg.NumLEDs,
+		})
+	})
+
+	// Browser WebSocket (live preview + control)
+	e.GET("/ws", BrowserWSHandler)
+
+	// Strip control
+	e.POST("/api/power", PowerHandler)
+	e.POST("/api/brightness", BrightnessHandler)
+	e.POST("/api/stop", StopHandler)
+	e.POST("/api/play/:id", PlayHandler)
+	e.POST("/api/frame", SetFrameHandler)
+
+	// Animation CRUD
+	e.GET("/api/animations", ListAnimationsHandler)
+	e.POST("/api/animations", CreateAnimationHandler)
+	e.GET("/api/animations/:id", GetAnimationHandler)
+	e.PUT("/api/animations/:id", UpdateAnimationHandler)
+	e.DELETE("/api/animations/:id", DeleteAnimationHandler)
 }

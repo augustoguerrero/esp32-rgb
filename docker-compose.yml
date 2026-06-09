@@ -1,0 +1,17 @@
+services:
+  esp32-rgb:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - ESP32_WS_ADDR=${ESP32_WS_ADDR:-ws://192.168.1.74:81/ws}
+      - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production}
+      - PORT=8080
+      - DB_PATH=/app/data/animations.db
+      - NUM_LEDS=${NUM_LEDS:-99}
+    volumes:
+      - animations_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  animations_data:

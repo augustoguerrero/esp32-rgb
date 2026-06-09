@@ -4,3 +4,4 @@
 .idea
 /ui/*templ.txt
 /ui/*templ.go
+/data/*.db

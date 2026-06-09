@@ -1,359 +1,128 @@
 package ui
 
-// ColorPicker renders an advanced HSV color picker with sliders
-templ ColorPicker(hue, sat, val, brightness, currentHex, satLeft, satRight, valRight string) {
-	<div class="mb-4">
-		<label class="block text-sm font-medium text-gray-700">Pick a Color</label>
-		<div id="color-preview" class="w-full h-12 mb-2 rounded" style={"background-color: " + currentHex + ";"}></div>
-		<!-- Hue Slider -->
-		<form>
-			<input type="hidden" name="brightness" value={ brightness } />
-			<input
-				type="range"
-				name="hue"
-				min="0"
-				max="360"
-				value={ hue }
-				hx-post="/set-hsv"
-				hx-target="body"
-				hx-swap="outerHTML"
-				class="w-full mb-2"
-				style="background: linear-gradient(to right, hsl(0, 100%, 50%), hsl(60, 100%, 50%), hsl(120, 100%, 50%), hsl(180, 100%, 50%), hsl(240, 100%, 50%), hsl(300, 100%, 50%), hsl(360, 100%, 50%));"
-			/>
-		</form>
-		<!-- Saturation Slider -->
-		<form>
-			<input type="hidden" name="brightness" value={ brightness } />
-			<input
-				type="range"
-				name="sat"
-				min="0"
-				max="100"
-				value={ sat }
-				hx-post="/set-hsv"
-				hx-target="body"
-				hx-swap="outerHTML"
-				class="w-full mb-2"
-				style={"background: linear-gradient(to right, " + satLeft + ", " + satRight + ");"}
-			/>
-		</form>
-		<!-- Value Slider -->
-		<form>
-			<input type="hidden" name="brightness" value={ brightness } />
-			<input
-				type="range"
-				name="val"
-				min="0"
-				max="100"
-				value={ val }
-				hx-post="/set-hsv"
-				hx-target="body"
-				hx-swap="outerHTML"
-				class="w-full mb-2"
-				style={"background: linear-gradient(to right, #000000, " + valRight + ");"}
-			/>
-		</form>
-		<!-- Hex Input -->
-		<form>
-			<label class="block text-sm font-medium text-gray-700">Hex Code</label>
-			<input
-				type="text"
-				name="hex"
-				value={ currentHex }
-				hx-post="/set-hex"
-				hx-target="body"
-				hx-swap="outerHTML"
-				class="w-full p-2 border rounded-md"
-			/>
-		</form>
-	</div>
-}
+import "strconv"
 
-// BrightnessSolid renders the brightness slider for solid color mode
-templ BrightnessSolid(currentBrightness string) {
-	<form class="mb-4 block" id="brightness-solid">
-		<label class="block text-sm font-medium text-gray-700">Brightness</label>
-		<input
-			type="range"
-			name="brightness"
-			min="0"
-			max="255"
-			value={ currentBrightness }
-			hx-post="/set-brightness"
-			hx-target="body"
-			hx-swap="outerHTML"
-			class="w-full"
-		/>
-	</form>
-	<div id="brightness-solid" class="block" hx-swap-oob="true"></div>
-	<div id="brightness-anim" class="hidden" hx-swap-oob="true"></div>
-}
+// EditorPage renders the static HTML shell for the animation editor.
+// All dynamic behaviour is handled by static/js/editor.js.
+templ EditorPage(numLEDs int) {
+	<div class="flex flex-col h-screen overflow-hidden" id="app" data-num-leds={ strconv.Itoa(numLEDs) }>
 
-// BrightnessAnim renders the brightness slider for animation modes
-templ BrightnessAnim(currentBrightness string) {
-	<form class="mb-4 block" id="brightness-anim">
-		<label class="block text-sm font-medium text-gray-700">Brightness</label>
-		<input
-			type="range"
-			name="brightness"
-			min="0"
-			max="255"
-			value={ currentBrightness }
-			hx-post="/set-brightness"
-			hx-target="body"
-			hx-swap="outerHTML"
-			class="w-full"
-		/>
-	</form>
-	<div id="brightness-solid" class="hidden" hx-swap-oob="true"></div>
-	<div id="brightness-anim" class="block" hx-swap-oob="true"></div>
-}
+		<!-- ── Header ── -->
+		<header class="flex items-center gap-4 px-4 py-2 bg-gray-900 border-b border-gray-700 shrink-0">
+			<h1 class="text-lg font-bold text-white">LED Strip Editor</h1>
 
-// AnimationSelectorSolid renders the select with "solid" selected
-templ AnimationSelectorSolid() {
-	<form>
-		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
-		<select
-			name="animation"
-			hx-post="/set-animation"
-			hx-target="body"
-			hx-swap="outerHTML"
-			class="w-full p-2 border rounded-md"
-		>
-			<option value="solid" selected>Solid Color</option>
-			<option value="rainbow">Rainbow</option>
-			<option value="fade">Fade</option>
-			<option value="chase">Chase</option>
-			<option value="twinkle">Twinkle</option>
-			<option value="space">Space</option>
-			<option value="fire">Fire</option>
-			<option value="sections">Sections</option>
-			<option value="flag">Flag</option>
-		</select>
-	</form>
-}
+			<span id="conn-status" class="flex items-center gap-1 text-xs text-red-400">
+				<span class="w-2 h-2 rounded-full bg-red-400"></span>
+				disconnected
+			</span>
 
-templ AnimationSelectorRainbow() {
-	<form>
-		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
-		<select
-			name="animation"
-			hx-post="/set-animation"
-			hx-target="body"
-			hx-swap="outerHTML"
-			class="w-full p-2 border rounded-md"
-		>
-			<option value="solid">Solid Color</option>
-			<option value="rainbow" selected>Rainbow</option>
-			<option value="fade">Fade</option>
-			<option value="chase">Chase</option>
-			<option value="twinkle">Twinkle</option>
-			<option value="space">Space</option>
-			<option value="fire">Fire</option>
-			<option value="sections">Sections</option>
-			<option value="flag">Flag</option>
-		</select>
-	</form>
-}
+			<div class="ml-auto flex items-center gap-3">
+				<button id="btn-power" class="px-3 py-1 rounded text-sm font-medium bg-gray-700 hover:bg-gray-600 text-white">
+					Power
+				</button>
+				<div class="flex items-center gap-2">
+					<label class="text-xs text-gray-400">Brightness</label>
+					<input id="slider-brightness" type="range" min="0" max="255" value="128"
+						class="w-28 accent-indigo-500"/>
+					<span id="brightness-val" class="text-xs w-7 text-right text-gray-300">128</span>
+				</div>
+			</div>
+		</header>
 
-templ AnimationSelectorFade() {
-	<form>
-		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
-		<select
-			name="animation"
-			hx-post="/set-animation"
-			hx-target="body"
-			hx-swap="outerHTML"
-			class="w-full p-2 border rounded-md"
-		>
-			<option value="solid">Solid Color</option>
-			<option value="rainbow">Rainbow</option>
-			<option value="fade" selected>Fade</option>
-			<option value="chase">Chase</option>
-			<option value="twinkle">Twinkle</option>
-			<option value="space">Space</option>
-			<option value="fire">Fire</option>
-			<option value="sections">Sections</option>
-			<option value="flag">Flag</option>
-		</select>
-	</form>
-}
+		<div class="flex flex-1 overflow-hidden">
 
-templ AnimationSelectorChase() {
-	<form>
-		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
-		<select
-			name="animation"
-			hx-post="/set-animation"
-			hx-target="body"
-			hx-swap="outerHTML"
-			class="w-full p-2 border rounded-md"
-		>
-			<option value="solid">Solid Color</option>
-			<option value="rainbow">Rainbow</option>
-			<option value="fade">Fade</option>
-			<option value="chase" selected>Chase</option>
-			<option value="twinkle">Twinkle</option>
-			<option value="space">Space</option>
-			<option value="fire">Fire</option>
-			<option value="sections">Sections</option>
-			<option value="flag">Flag</option>
-		</select>
-	</form>
-}
+			<!-- ── Left panel: tools + color picker ── -->
+			<aside class="w-56 shrink-0 bg-gray-900 border-r border-gray-700 flex flex-col gap-4 p-3 overflow-y-auto">
 
-templ AnimationSelectorTwinkle() {
-	<form>
-		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
-		<select
-			name="animation"
-			hx-post="/set-animation"
-			hx-target="body"
-			hx-swap="outerHTML"
-			class="w-full p-2 border rounded-md"
-		>
-			<option value="solid">Solid Color</option>
-			<option value="rainbow">Rainbow</option>
-			<option value="fade">Fade</option>
-			<option value="chase">Chase</option>
-			<option value="twinkle" selected>Twinkle</option>
-			<option value="space">Space</option>
-			<option value="fire">Fire</option>
-			<option value="sections">Sections</option>
-			<option value="flag">Flag</option>
-		</select>
-	</form>
-}
+				<!-- Tools -->
+				<section>
+					<p class="text-xs text-gray-500 uppercase mb-1">Tool</p>
+					<div class="grid grid-cols-2 gap-1">
+						<button data-tool="paint"    class="tool-btn active-tool">Paint</button>
+						<button data-tool="fill"     class="tool-btn">Fill All</button>
+						<button data-tool="gradient" class="tool-btn">Gradient</button>
+						<button data-tool="clear"    class="tool-btn">Clear</button>
+					</div>
+					<p id="gradient-hint" class="text-xs text-gray-500 mt-1 hidden">Click start LED, then end LED</p>
+				</section>
 
-templ AnimationSelectorSpace() {
-	<form>
-		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
-		<select
-			name="animation"
-			hx-post="/set-animation"
-			hx-target="body"
-			hx-swap="outerHTML"
-			class="w-full p-2 border rounded-md"
-		>
-			<option value="solid">Solid Color</option>
-			<option value="rainbow">Rainbow</option>
-			<option value="fade">Fade</option>
-			<option value="chase">Chase</option>
-			<option value="twinkle">Twinkle</option>
-			<option value="space" selected>Space</option>
-			<option value="fire">Fire</option>
-			<option value="sections">Sections</option>
-			<option value="flag">Flag</option>
-		</select>
-	</form>
-}
+				<!-- Color picker -->
+				<section>
+					<p class="text-xs text-gray-500 uppercase mb-1">Color</p>
+					<div id="color-preview" class="w-full h-8 rounded mb-2 border border-gray-700" style="background:#ff0000"></div>
 
-templ AnimationSelectorFire() {
-	<form>
-		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
-		<select
-			name="animation"
-			hx-post="/set-animation"
-			hx-target="body"
-			hx-swap="outerHTML"
-			class="w-full p-2 border rounded-md"
-		>
-			<option value="solid">Solid Color</option>
-			<option value="rainbow">Rainbow</option>
-			<option value="fade">Fade</option>
-			<option value="chase">Chase</option>
-			<option value="twinkle">Twinkle</option>
-			<option value="space">Space</option>
-			<option value="fire" selected>Fire</option>
-			<option value="sections">Sections</option>
-			<option value="flag">Flag</option>
-		</select>
-	</form>
-}
+					<label class="text-xs text-gray-400">Hue</label>
+					<input id="sl-hue" type="range" min="0" max="360" value="0"
+						class="w-full mb-1 accent-indigo-400"
+						style="background:linear-gradient(to right,hsl(0,100%,50%),hsl(60,100%,50%),hsl(120,100%,50%),hsl(180,100%,50%),hsl(240,100%,50%),hsl(300,100%,50%),hsl(360,100%,50%))"/>
 
-templ AnimationSelectorSections() {
-	<form>
-		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
-		<select
-			name="animation"
-			hx-post="/set-animation"
-			hx-target="body"
-			hx-swap="outerHTML"
-			class="w-full p-2 border rounded-md"
-		>
-			<option value="solid">Solid Color</option>
-			<option value="rainbow">Rainbow</option>
-			<option value="fade">Fade</option>
-			<option value="chase">Chase</option>
-			<option value="twinkle">Twinkle</option>
-			<option value="space">Space</option>
-			<option value="fire">Fire</option>
-			<option value="sections" selected>Sections</option>
-			<option value="flag">Flag</option>
-		</select>
-	</form>
-}
+					<label class="text-xs text-gray-400">Saturation</label>
+					<input id="sl-sat" type="range" min="0" max="100" value="100"
+						class="w-full mb-1 accent-indigo-400"/>
 
-templ AnimationSelectorFlag() {
-	<form>
-		<label class="block text-sm font-medium text-gray-700">Select Animation</label>
-		<select
-			name="animation"
-			hx-post="/set-animation"
-			hx-target="body"
-			hx-swap="outerHTML"
-			class="w-full p-2 border rounded-md"
-		>
-			<option value="solid">Solid Color</option>
-			<option value="rainbow">Rainbow</option>
-			<option value="fade">Fade</option>
-			<option value="chase">Chase</option>
-			<option value="twinkle">Twinkle</option>
-			<option value="space">Space</option>
-			<option value="fire">Fire</option>
-			<option value="sections">Sections</option>
-			<option value="flag" selected>Flag</option>
-		</select>
-	</form>
-}
+					<label class="text-xs text-gray-400">Value</label>
+					<input id="sl-val" type="range" min="0" max="100" value="100"
+						class="w-full mb-1 accent-indigo-400"/>
 
-// PowerToggle renders a power on/off button
-templ PowerToggle(isOn bool) {
-	<form class="mb-4">
-		<input type="hidden" name="power"
-			if isOn {
-				value="off"
-			} else {
-				value="on"
-			}
-		/>
-		<button
-			hx-post="/set-power"
-			hx-target="body"
-			hx-swap="outerHTML"
-			if isOn {
-				class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
-			} else {
-				class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
-			}
-		>
-			if isOn {
-				Turn Off
-			} else {
-				Turn On
-			}
-		</button>
-	</form>
-}
+					<label class="text-xs text-gray-400">Hex</label>
+					<input id="inp-hex" type="text" value="#ff0000" maxlength="7"
+						class="w-full px-2 py-1 rounded bg-gray-800 border border-gray-600 text-xs text-white font-mono"/>
+				</section>
 
-templ ControlPanel(currentBrightness string, currentAnimation string, brightnessComponent templ.Component, animationSelector templ.Component, isOn bool, showColorPicker bool, hue, sat, val, currentHex, satLeft, satRight, valRight string) {
-	<div class="flex-center max-w-md mx-auto p-6 bg-gray-100 rounded-lg shadow-md">
-		<h1 class="text-2xl font-bold text-center mb-4">LED Strip Control</h1>
-		@PowerToggle(isOn)
-		if showColorPicker {
-			@ColorPicker(hue, sat, val, currentBrightness, currentHex, satLeft, satRight, valRight)
-		}
-		@brightnessComponent
-		@animationSelector
+			</aside>
+
+			<!-- ── Main area ── -->
+			<main class="flex-1 flex flex-col overflow-hidden">
+
+				<!-- Strip visualizer -->
+				<div class="bg-gray-800 border-b border-gray-700 p-3 shrink-0">
+					<div id="strip" class="flex flex-wrap gap-1 select-none cursor-crosshair"></div>
+				</div>
+
+				<!-- Frame timeline -->
+				<div class="bg-gray-900 border-b border-gray-700 p-3 shrink-0">
+					<div class="flex items-center gap-3 mb-2">
+						<p class="text-xs text-gray-500 uppercase">Timeline</p>
+						<button id="btn-add-frame" class="text-xs px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white">+ Add Frame</button>
+						<button id="btn-clear-frame" class="text-xs px-2 py-0.5 rounded bg-gray-700 hover:bg-gray-600 text-white">Clear Frame</button>
+						<div class="flex items-center gap-1 ml-auto">
+							<label class="text-xs text-gray-400">Duration</label>
+							<input id="inp-duration" type="number" value="100" min="20" max="10000" step="10"
+								class="w-16 px-1 py-0.5 rounded bg-gray-800 border border-gray-600 text-xs text-white"/>
+							<span class="text-xs text-gray-500">ms</span>
+						</div>
+					</div>
+					<div id="timeline" class="flex gap-2 overflow-x-auto pb-1"></div>
+				</div>
+
+				<!-- Playback controls -->
+				<div class="bg-gray-900 border-b border-gray-700 px-3 py-2 shrink-0 flex items-center gap-3">
+					<button id="btn-play-local"  class="px-3 py-1 rounded bg-green-700 hover:bg-green-600 text-sm font-medium text-white">▶ Preview</button>
+					<button id="btn-stop"        class="px-3 py-1 rounded bg-gray-700 hover:bg-gray-600 text-sm font-medium text-white">⏹ Stop</button>
+					<div class="flex items-center gap-2">
+						<label class="text-xs text-gray-400">FPS</label>
+						<input id="inp-fps" type="number" value="30" min="1" max="60"
+							class="w-14 px-1 py-0.5 rounded bg-gray-800 border border-gray-600 text-xs text-white"/>
+					</div>
+					<label class="flex items-center gap-1 text-xs text-gray-400 cursor-pointer">
+						<input id="chk-loop" type="checkbox" checked class="accent-indigo-500"/> Loop
+					</label>
+				</div>
+
+				<!-- Saved animations -->
+				<div class="flex-1 overflow-y-auto p-3 bg-gray-950">
+					<div class="flex items-center gap-3 mb-2">
+						<p class="text-xs text-gray-500 uppercase">Saved Animations</p>
+						<div class="ml-auto flex items-center gap-2">
+							<input id="inp-anim-name" type="text" placeholder="Animation name…"
+								class="px-2 py-0.5 rounded bg-gray-800 border border-gray-600 text-xs text-white w-40"/>
+							<button id="btn-save-anim" class="text-xs px-3 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white">Save</button>
+						</div>
+					</div>
+					<div id="anim-list" class="flex flex-col gap-1"></div>
+				</div>
+
+			</main>
+		</div>
 	</div>
 }
